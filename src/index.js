@@ -2,6 +2,8 @@ const http = require('http');
 const express = require('express');
 const pkgcloud = require('pkgcloud');
 const mongodb = require('mongodb');
+
+
 const app = express();
 
 const bodyParser = require('body-parser');
@@ -10,7 +12,7 @@ const multer = require('multer');
 const upload = multer({dest: 'code/'});
 const path = require('path');
 const fs = require('fs');
-const pify = require('pify')
+const pify = require('pify');
 const MongoClient = require('mongodb').MongoClient;
 const childProcess = require('child_process');
 
@@ -19,6 +21,7 @@ const state = {
   nextDeploymentId: 0,
   deployments: new Map()
 };
+
 
 childProcess.spawn(`node ${path.join(__dirname, 'db_service.js')}`, [], {
   shell: true
@@ -62,7 +65,6 @@ app.post('/deploy/:name/:role', upload.fields([{name: 'package', maxCount: 1}, {
     const appState = state.deployments.get(req.params.name);
     const appConfig = appState.config;
     const roles = appConfig.roles.filter((role) => role.name == req.params.role);
-
     if(roles.length == 0) {
       console.log("Error role name");
       res.json({error: `App ${req.params.name} does not have role ${req.params.role}`});
@@ -75,8 +77,6 @@ app.post('/deploy/:name/:role', upload.fields([{name: 'package', maxCount: 1}, {
 
       res.json({success: `Uploaded ${req.params.name} ${req.params.role}`});
     }
-
-
   }
 });
 
@@ -104,13 +104,11 @@ app.get('/deploy/:name', async (req, res) => {
         projectDomainName: 'Default',
         keystoneAuthVersion: 'v3'
     });
-
     const rolesIps = await Promise.all(appConfig.roles.map(role => deployRoleInstances(role, client, appConfig.name)));
     //console.log(rolesIps);
     appConfig.roles.forEach((role, index) => {
       role.ips = rolesIps[index];
     });
-
     console.dir(appConfig.roles)
     childProcess.spawn(`node ${path.join(__dirname, 'load_balancer.js')}`, [], {
       env: {
@@ -124,11 +122,10 @@ app.get('/deploy/:name', async (req, res) => {
       _id: state.deployments.get(req.params.name).deploymentId,
       name: req.params.name,
       ips: rolesIps[0]
-    })   
+    });
     console.log("Started load balancer on port " + state.nextLoadBalancerPort);
     state.nextLoadBalancerPort = state.nextLoadBalancerPort + 1;
     res.json({"success": state.nextLoadBalancerPort - 1});
-
   }
 });
 
